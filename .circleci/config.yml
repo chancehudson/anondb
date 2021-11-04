@@ -1,0 +1,41 @@
+version: 2.1
+workflows:
+  test_app:
+    jobs:
+      - test_only:
+          filters:
+            branches:
+              ignore: main
+      - test_and_upload:
+          filters:
+            branches:
+              only: main
+jobs:
+  test_only:
+    machine:
+      image: ubuntu-2004:202010-01
+    steps:
+      - checkout
+      - run:
+          name: Install
+          command: npm ci
+      - run:
+          name: Test
+          command: npm t
+  test_and_upload:
+    machine:
+      image: ubuntu-2004:202010-01
+    steps:
+      - checkout
+      - run:
+          name: Install
+          command: npm ci
+      - run:
+          name: Test
+          command: npm run coverage && npm run badge
+      - run:
+          name: Coverage
+          command: npx tubs upload ./coverage/lcov-report
+      - run:
+          name: Badge Purge
+          command: npx camo-purge --repository https://github.com/jchancehud/anondb
