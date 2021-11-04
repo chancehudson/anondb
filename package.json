@@ -18,7 +18,8 @@
     "clean": "tsc --build tsconfig.build.json --clean && shx rm -rf coverage *.log junit.xml dist && jest --clearCache",
     "test": "sh scripts/test.sh",
     "test:trace": "LOG_LEVEL=trace PRINT_LOG=true yarn test",
-    "coverage": "sh scripts/test.sh --coverage"
+    "coverage": "sh scripts/test.sh --coverage",
+    "badge": "lcov-badge-generator ./coverage/lcov.info -o coverage/lcov-report/badge.svg"
   },
   "dependencies": {
     "async-lock": "^1.2.11",
@@ -37,6 +38,7 @@
     "@types/node": "^12.20.36",
     "fake-indexeddb": "^3.1.2",
     "jest": "^26.0.0",
+    "lcov-badge-generator": "^1.0.5",
     "prettier": "^2.4.1",
     "shx": "^0.3.3",
     "ts-jest": "^26.0.0",
