@@ -32,10 +32,10 @@ export class IndexedDBConnector extends DB {
     this.schema = schema
   }
 
-  static async create(tables: TableData[]) {
+  static async create(tables: TableData[], version = 1) {
     const schema = constructSchema(tables)
     const connector = new this(schema)
-    connector.db = await openDB(DB_NAME, 15, {
+    connector.db = await openDB(DB_NAME, version, {
       /**
        * If an index is changed (e.g. same keys different "unique" value) the
        * index will not be updated. If such a case occurs the name should be

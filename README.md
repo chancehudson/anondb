@@ -40,7 +40,7 @@ A generic interface for data storage. Supported databases:
 
 ```js
 
-const { DB, SQLiteConnector } = require('anondb/dist/node')
+const { DB, SQLiteConnector } = require('anondb/node')
 const schema = require('./schema')
 
 async function () {
@@ -59,7 +59,7 @@ async function () {
 ### Browser
 
 ```js
-import { IndexedDBConnector } from 'anondb/dist/web'
+import { IndexedDBConnector } from 'anondb/web'
 
 async function () {
   const db = await IndexedDBConnector.create(schema)
