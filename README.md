@@ -5,6 +5,75 @@ A generic interface for data storage. Supported databases:
 - PostgreSQL
 - IndexedDB
 
+## Usage
+
+<details>
+
+  <summary>schema.js</summary>
+
+  ```js
+  const schema = [
+    {
+      name: 'User',
+      primaryKey: 'id',
+      rows: [
+        {
+          name: 'id',
+          unique: true,
+          type: 'String',
+          default: () => nanoid(),
+        },
+        {
+          name: 'createdAt',
+          type: 'Int',
+          default: () => +new Date(),
+        },
+        ['username', 'String', { unique: true }]
+      ]
+    },
+  ]
+  ```
+
+</details>
+
+### NodeJS
+
+```js
+
+const { DB, SQLiteConnector } = require('anondb/dist/node')
+const schema = require('./schema')
+
+async function () {
+  const db = await SQLiteConnector.create(schema)
+  const doc = await db.create('User', {
+    username: 'Chance',
+  })
+  const thatDoc = await db.findOne('User', {
+    where: {
+      username: 'Chance',
+    }
+  })
+}
+```
+
+### Browser
+
+```js
+import { IndexedDBConnector } from 'anondb/dist/web'
+
+async function () {
+  const db = await IndexedDBConnector.create(schema)
+  const doc = await db.create('User', {
+    username: 'Chance',
+  })
+  const thatDoc = await db.findOne('User', {
+    where: {
+      username: 'Chance',
+    }
+  })
+}
+```
+
 ## Interface
 
 This is the interface for a `DB` object. This is the primary way to interact with data storage. A `DB` object might be backed by an SQL database, indexedDB, or a simple in memory structure.
