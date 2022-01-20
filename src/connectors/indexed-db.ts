@@ -43,7 +43,18 @@ export class IndexedDBConnector extends DB {
        * */
       async upgrade(db, _, __, tx) {
         for (const table of tables) {
+          const tableSchema = schema[table.name] || ({} as any)
           const indexes = (schema[table.name] || {}).indexes || []
+          for (const index of indexes) {
+            const indexRows = index.keys.map(key =>
+              tableSchema.rows.find(r => r.name === key),
+            )
+            if (indexRows.find(r => r.type === 'Bool')) {
+              console.log(
+                `WARNING: Boolean indexes in IndexDB will always be empty: index "${index.name}"`,
+              )
+            }
+          }
           if (db.objectStoreNames.contains(table.name)) {
             // table exists, look for indexes we need to create
             for (const index of indexes) {
@@ -131,18 +142,26 @@ export class IndexedDBConnector extends DB {
      * Currently only queries for single values can be accelerated by index.
      * Many fields can be specified, but each may have only 1 value.
      *
-     * TODO: gt, lt, exists, include operators
+     * TODO: gt, lt, exists operators
      * */
     if (!this.db) throw new Error('DB is not initialized')
     // scan if there's a complex query
+    const start = +new Date()
     if (
-      typeof options.orderBy === 'object' ||
+      // typeof options.orderBy === 'object' ||
       Object.keys(options.where).length === 0
     ) {
       return this.findUsingScan(collection, options, _tx)
     }
     for (const key of Object.keys(options.where)) {
-      if (typeof options.where[key] === 'object') {
+      if (key === 'AND' || key === 'OR')
+        return this.findUsingScan(collection, options, _tx)
+      if (options.where[key] === undefined)
+        return this.findUsingScan(collection, options, _tx)
+      if (
+        typeof options.where[key] === 'object' &&
+        !Array.isArray(options.where[key])
+      ) {
         return this.findUsingScan(collection, options, _tx)
       }
     }
@@ -185,16 +204,70 @@ export class IndexedDBConnector extends DB {
       // use this index
       const tx = _tx || this.db.transaction(collection)
       const txIndex = tx.objectStore(collection).index(index.name)
-      const query = index.keys.map(k => options.where[k])
-      const result = await txIndex.getAll(query)
-      const found = result.filter(i => !!i)
+      // All keys in an array
+      const keyVals = {}
+      const keyIndexes = {}
+      for (const key of Object.keys(options.where)) {
+        keyVals[key] = [options.where[key]].flat().filter(i => i !== undefined)
+        keyIndexes[key] = 0
+        if (keyVals[key].length === 0) {
+          return []
+        }
+      }
+      const resultPromises = [] as Promise<any>[]
+      // process all combinations of values
+      for (;;) {
+        const query = index.keys.map(k => {
+          const val = keyVals[k][keyIndexes[k]]
+          if (typeof val === 'boolean') return val ? 1 : 0
+          return val
+        })
+        resultPromises.push(txIndex.getAll(query))
+        let done = true
+        for (const key of Object.keys(options.where)) {
+          if (keyIndexes[key] < keyVals[key].length - 1) {
+            keyIndexes[key] += 1
+            done = false
+            break
+          }
+        }
+        if (done) break
+      }
+      const allResults = (await Promise.all(resultPromises))
+        .flat()
+        .filter(i => !!i)
+      // otherwise we've exhausted all combinations
+      if (options.orderBy && Object.keys(options.orderBy).length > 0) {
+        const key = Object.keys(options.orderBy || {})[0]
+        const order = (options.orderBy as any)[key]
+        allResults.sort((a, b) => {
+          if (a[key] > b[key]) return 1
+          if (a[key] < b[key]) return -1
+          return 0
+        })
+        if (order === 'desc') {
+          allResults.reverse()
+        }
+      }
+      const finalResults =
+        typeof options.limit === 'number'
+          ? allResults.slice(0, options.limit)
+          : allResults
       await loadIncluded(collection, {
-        models: found,
+        models: finalResults,
         include: options.include,
         findMany: this._findMany.bind(this),
         table,
       })
-      return found
+      if (+new Date() - start > 50 && typeof window !== 'undefined')
+        console.log(
+          'query length',
+          collection,
+          options.where,
+          options.include,
+          +new Date() - start,
+        )
+      return finalResults
     }
     // no index supports the query, scan
     return this.findUsingScan(collection, options, _tx)
@@ -205,6 +278,7 @@ export class IndexedDBConnector extends DB {
     options: FindManyOptions,
     _tx?: IDBPTransaction<any, string[], 'readwrite' | 'readonly'>,
   ) {
+    const start = +new Date()
     if (!this.db) throw new Error('DB is not initialized')
     const table = this.schema[collection]
     if (!table) throw new Error(`Invalid collection: "${collection}"`)
@@ -227,8 +301,57 @@ export class IndexedDBConnector extends DB {
       const direction = (options.orderBy || {})[key] === 'asc' ? 'next' : 'prev'
       const index = tx.objectStore(collection).index(indexName)
       cursor = await index.openCursor(null, direction)
-    } else {
+    } else if (Object.keys(options.where).length === 0) {
       cursor = await tx.objectStore(collection).openCursor()
+    } else if (
+      options.where.OR !== undefined ||
+      options.where.AND !== undefined
+    ) {
+      cursor = await tx.objectStore(collection).openCursor()
+    } else {
+      // use one of the keys in the query to filter
+      for (const name of tx.objectStore(collection).indexNames) {
+        const index = tx.objectStore(collection).index(name)
+        const keys = [index.keyPath].flat()
+        const ranges = [] as any[]
+        for (const key of keys) {
+          const val = options.where[key]
+          if (val === null || val === undefined) break
+          if (Array.isArray(val)) break
+          const cleanBool = v => {
+            if (typeof v === 'boolean') return v ? 1 : 0
+            return v
+          }
+          if (typeof val !== 'object') {
+            ranges.push(IDBKeyRange.only(cleanBool(val)))
+            continue
+          }
+          if (Object.keys(val).length !== 1) break
+          if (val.gt !== undefined) {
+            ranges.push(IDBKeyRange.lowerBound(cleanBool(val.gt), true))
+            continue
+          } else if (val.gte !== undefined) {
+            ranges.push(IDBKeyRange.lowerBound(cleanBool(val.gte), false))
+            continue
+          } else if (val.lt !== undefined) {
+            ranges.push(IDBKeyRange.upperBound(cleanBool(val.lt), true))
+            continue
+          } else if (val.lte !== undefined) {
+            ranges.push(IDBKeyRange.upperBound(cleanBool(val.lte), false))
+            continue
+          }
+          break
+        }
+        if (ranges.length === keys.length) {
+          cursor = await index.openCursor(
+            keys.length === 1 ? ranges[0] : ranges,
+          )
+          break
+        }
+      }
+      if (!cursor) {
+        cursor = await tx.objectStore(collection).openCursor()
+      }
     }
     const { where, limit } = options
     while (cursor) {
@@ -245,11 +368,26 @@ export class IndexedDBConnector extends DB {
       findMany: this._findMany.bind(this),
       table,
     })
+    if (+new Date() - start > 50 && typeof window !== 'undefined')
+      console.log(
+        'query length scan',
+        collection,
+        where,
+        options.limit,
+        +new Date() - start,
+      )
     return found
   }
 
   async count(collection: string, where: WhereClause) {
-    return (await this.findMany(collection, { where })).length
+    if (Object.keys(where).length !== 0) {
+      return (await this.findMany(collection, { where })).length
+    }
+    // otherwise just count all the docs in the collection
+    if (!this.db) throw new Error('DB is not initialized')
+    const tx = this.db.transaction(collection, 'readonly')
+    const store = tx.objectStore(collection)
+    return store.count()
   }
 
   async update(collection: string, options: UpdateOptions) {
