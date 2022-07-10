@@ -23,13 +23,14 @@ jobs:
           name: Test
           command: |
             npm i jest-junit
+            mkdir -p reports/junit
             npm test -- --ci --runInBand --reporters=default --reporters=jest-junit
           environment:
-            JEST_JUNIT_OUTPUT_DIR: ./reports/
+            JEST_JUNIT_OUTPUT_DIR: ./reports/junit/
       - store_test_results:
-          path: ./reports/
+          path: ./reports
       - store_artifacts:
-          path: ./reports/
+          path: ./reports
   test_and_upload:
     machine:
       image: ubuntu-2004:202010-01
