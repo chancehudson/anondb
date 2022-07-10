@@ -24,7 +24,7 @@ jobs:
           command: |
             npm i -D jest-junit
             mkdir ./reports
-            npm test --ci --reporters=default --reporters=jest-junit
+            npm test -- --ci --reporters=default --reporters=jest-junit
           environment:
             JEST_JUNIT_OUTPUT_DIR: ./reports/
       - store_test_results:
