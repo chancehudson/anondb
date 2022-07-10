@@ -28,6 +28,8 @@ jobs:
             JEST_JUNIT_OUTPUT_DIR: ./reports/
       - store_test_results:
           path: ./reports/
+      - store_artifacts:
+          path: ./reports/
   test_and_upload:
     machine:
       image: ubuntu-2004:202010-01
