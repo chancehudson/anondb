@@ -21,7 +21,12 @@ jobs:
           command: npm ci
       - run:
           name: Test
-          command: npm t
+          command: |
+            npm i -g tap-xunit
+            mkdir -p ~/reports
+            npm test | tap-xunit > ~/reports/ava.xml
+      - store_test_results:
+          path: ~/reports
   test_and_upload:
     machine:
       image: ubuntu-2004:202010-01
