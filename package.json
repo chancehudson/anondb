@@ -13,7 +13,7 @@
     "strip-vendor": "cat ./dist/connectors/sqlite.d.ts | tail -n +2 | tee ./dist/connectors/sqlite.d.ts > /dev/null",
     "clean": "tsc --build tsconfig.build.json --clean && shx rm -rf coverage *.log junit.xml dist && jest --clearCache",
     "test": "sh scripts/test.sh",
-    "test:trace": "LOG_LEVEL=trace PRINT_LOG=true yarn test",
+    "test:trace": "LOG_LEVEL=trace PRINT_LOG=true npm run test",
     "coverage": "sh scripts/test.sh --coverage",
     "badge": "lcov-badge-generator ./coverage/lcov.info -o coverage/lcov-report/badge.svg"
   },

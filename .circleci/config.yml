@@ -22,11 +22,13 @@ jobs:
       - run:
           name: Test
           command: |
-            npm i -g tap-xunit
+            npm i -D jest-junit
             mkdir -p ~/reports
-            npm test | tap-xunit > ~/reports/ava.xml
+            npm test --reporters=default --reports=jest-junit
+          environment:
+            JEST_JUNIT_OUTPUT_DIR: ./reports/junit/
       - store_test_results:
-          path: ~/reports
+          path: ./reports/junit/
   test_and_upload:
     machine:
       image: ubuntu-2004:202010-01
