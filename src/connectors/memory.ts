@@ -52,6 +52,23 @@ export class MemoryConnector extends DB {
     return rows
   }
 
+  checkForInvalidRows(_collection: string, doc: any, checkingWhere = false) {
+    const collection = this.schema[_collection]
+    if (!collection) {
+      throw new Error(`Invalid collection: "${_collection}"`)
+    }
+    // check for invalid fields
+    for (const d of [doc].flat()) {
+      for (const key of Object.keys(d)) {
+        if (!collection.rowsByName[key] && key !== 'OR' && key !== 'AND') {
+          throw new Error(`Unable to find row definition for key: "${key}"`)
+        } else if (!collection.rowsByName[key] && !checkingWhere) {
+          throw new Error(`Unable to find row definition for key: "${key}"`)
+        }
+      }
+    }
+  }
+
   async create(collection: string, doc: any) {
     return this.lock.acquire('write', async () =>
       this._create(collection, doc)
@@ -63,6 +80,8 @@ export class MemoryConnector extends DB {
     if (!collection) {
       throw new Error(`Invalid collection: "${_collection}"`)
     }
+    // check for invalid fields
+    this.checkForInvalidRows(_collection, doc)
     const docs = validateDocuments(collection, doc)
     const newUniques = {}
     // now we've finalized the documents, compare uniqueness within the set
@@ -100,6 +119,7 @@ export class MemoryConnector extends DB {
     if (!collection) {
       throw new Error(`Invalid collection: "${_collection}"`)
     }
+    this.checkForInvalidRows(_collection, options.where, true)
     const matches = [] as any[]
     for (const doc of this.db[_collection]) {
       if (matchDocument(options.where, doc)) {
@@ -146,6 +166,9 @@ export class MemoryConnector extends DB {
     return this.lock.acquire('write', async () =>
       this._update(collection, options)
     )
+      .catch(err => {
+        throw new Error(`anondb error: ${err}`)
+      })
   }
 
   async _update(_collection: string, options: UpdateOptions) {
@@ -155,6 +178,7 @@ export class MemoryConnector extends DB {
     }
     let updatedCount = 0
     const newDocs = [] as any[]
+    this.checkForInvalidRows(_collection, options.update)
 
     // deep copy for the operation
     const newUniques = {}
@@ -198,6 +222,9 @@ export class MemoryConnector extends DB {
 
   async upsert(collection: string, options: UpsertOptions) {
     return this.lock.acquire('write', () => this._upsert(collection, options))
+      .catch(err => {
+        throw new Error(`anondb error: ${err}`)
+      })
   }
 
   async _upsert(collection: string, options: UpsertOptions) {
@@ -213,6 +240,9 @@ export class MemoryConnector extends DB {
     return this.lock.acquire('write', () =>
       this._delete(collection, options)
     )
+      .catch(err => {
+        throw new Error(`anondb error: ${err}`)
+      })
   }
 
   async _delete(_collection: string, options: DeleteManyOptions) {
@@ -220,6 +250,7 @@ export class MemoryConnector extends DB {
     if (!collection) {
       throw new Error(`Invalid collection: "${_collection}"`)
     }
+    this.checkForInvalidRows(_collection, options.where)
     const newUniques = {}
     for (const row of this.uniqueRows(_collection)) {
       newUniques[this.uniqueRowKey(_collection, row.name)] = {
@@ -248,6 +279,9 @@ export class MemoryConnector extends DB {
     return this.lock.acquire('write', () =>
       this._transaction(operation, onComplete)
     )
+      .catch(err => {
+        throw new Error(`anondb error: ${err}`)
+      })
   }
 
   async _transaction(operation: (db: TransactionDB) => void, onComplete?: () => void) {
@@ -284,6 +318,7 @@ export class MemoryConnector extends DB {
     txThis.findMany = this.findMany.bind(txThis)
     txThis.uniqueRows = this.uniqueRows.bind(txThis)
     txThis.uniqueRowKey = this.uniqueRowKey.bind(txThis)
+    txThis.checkForInvalidRows = this.checkForInvalidRows.bind(txThis)
     const db = {
       delete: (collection: string, options: DeleteManyOptions) => {
         promise = promise.then(() => txThis._delete(collection, options))
