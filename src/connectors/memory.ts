@@ -52,7 +52,13 @@ export class MemoryConnector extends DB {
     return rows
   }
 
-  async create(_collection: string, doc: any) {
+  async create(collection: string, doc: any) {
+    return this.lock.acquire('write', async () =>
+      this._create(collection, doc)
+    )
+  }
+
+  async _create(_collection: string, doc: any) {
     const collection = this.schema[_collection]
     if (!collection) {
       throw new Error(`Invalid collection: "${_collection}"`)
@@ -136,7 +142,13 @@ export class MemoryConnector extends DB {
     return docs.length
   }
 
-  async update(_collection: string, options: UpdateOptions) {
+  async update(collection: string, options: UpdateOptions) {
+    return this.lock.acquire('write', async () =>
+      this._update(collection, options)
+    )
+  }
+
+  async _update(_collection: string, options: UpdateOptions) {
     const collection = this.schema[_collection]
     if (!collection) {
       throw new Error(`Invalid collection: "${_collection}"`)
@@ -178,20 +190,32 @@ export class MemoryConnector extends DB {
       }
     }
     this.db[_collection] = newDocs
-    this.db.__uniques__ = newUniques
+    for (const key of Object.keys(newUniques)) {
+      this.db.__uniques__[key] = newUniques[key]
+    }
     return updatedCount
   }
 
   async upsert(collection: string, options: UpsertOptions) {
-    const updatedCount = await this.update(collection, options)
+    return this.lock.acquire('write', () => this._upsert(collection, options))
+  }
+
+  async _upsert(collection: string, options: UpsertOptions) {
+    const updatedCount = await this._update(collection, options)
     if (updatedCount > 0) {
       return Object.keys(options.update).length === 0 ? 0 : updatedCount
     }
-    const created = await this.create(collection, options.create)
+    const created = await this._create(collection, options.create)
     return Array.isArray(created) ? created.length : 1
   }
 
-  async delete(_collection: string, options: DeleteManyOptions) {
+  async delete(collection: string, options: DeleteManyOptions) {
+    return this.lock.acquire('write', () =>
+      this._delete(collection, options)
+    )
+  }
+
+  async _delete(_collection: string, options: DeleteManyOptions) {
     const collection = this.schema[_collection]
     if (!collection) {
       throw new Error(`Invalid collection: "${_collection}"`)
@@ -214,13 +238,19 @@ export class MemoryConnector extends DB {
     }
     const deletedCount = this.db[_collection].length - newDocs.length
     this.db[_collection] = newDocs
-    for (const row of this.uniqueRows(_collection)) {
-      this.db.__uniques__[this.uniqueRowKey(_collection, row.name)] = newUniques
+    for (const key of Object.keys(newUniques)) {
+      this.db.__uniques__[key] = newUniques[key]
     }
     return deletedCount
   }
 
   async transaction(operation: (db: TransactionDB) => void, onComplete?: () => void) {
+    return this.lock.acquire('write', () =>
+      this._transaction(operation, onComplete)
+    )
+  }
+
+  async _transaction(operation: (db: TransactionDB) => void, onComplete?: () => void) {
     const onCommitCallbacks = [] as any[]
     const onErrorCallbacks = [] as any[]
     const onCompleteCallbacks = [] as any[]
@@ -246,26 +276,26 @@ export class MemoryConnector extends DB {
       schema: this.schema,
       db: tempDB
     } as any
-    txThis.delete = this.delete.bind(txThis)
-    txThis.create = this.create.bind(txThis)
-    txThis.update = this.update.bind(txThis)
-    txThis.upsert = this.upsert.bind(txThis)
+    txThis._delete = this._delete.bind(txThis)
+    txThis._create = this._create.bind(txThis)
+    txThis._update = this._update.bind(txThis)
+    txThis._upsert = this._upsert.bind(txThis)
     txThis.findOne = this.findOne.bind(txThis)
     txThis.findMany = this.findMany.bind(txThis)
     txThis.uniqueRows = this.uniqueRows.bind(txThis)
     txThis.uniqueRowKey = this.uniqueRowKey.bind(txThis)
     const db = {
       delete: (collection: string, options: DeleteManyOptions) => {
-        promise = promise.then(() => txThis.delete(collection, options))
+        promise = promise.then(() => txThis._delete(collection, options))
       },
       create: (collection: string, docs: any) => {
-        promise = promise.then(() => txThis.create(collection, docs))
+        promise = promise.then(() => txThis._create(collection, docs))
       },
       update: (collection: string, options: UpdateOptions) => {
-        promise = promise.then(() => txThis.update(collection, options))
+        promise = promise.then(() => txThis._update(collection, options))
       },
       upsert: (collection: string, options: UpsertOptions) => {
-        promise = promise.then(() => txThis.upsert(collection, options))
+        promise = promise.then(() => txThis._upsert(collection, options))
       },
       onCommit: (cb: Function) => {
         if (typeof cb !== 'function')
