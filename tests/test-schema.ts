@@ -7,13 +7,13 @@ export default [
     rows: [
       {
         name: 'id',
-        type: 'String',
+        type: 'string',
         default: () => Math.floor(Math.random() * 1000000).toString(),
       },
-      ['uniqueField', 'String', { unique: true }],
-      ['uniqueAndOptionalField', 'String', { unique: true, optional: true }],
-      ['optionalField', 'String', { optional: true }],
-      ['regularField', 'String'],
+      ['uniqueField', 'string', { unique: true }],
+      ['uniqueAndOptionalField', 'string', { unique: true, optional: true }],
+      ['optionalField', 'string', { optional: true }],
+      ['regularField', 'string'],
     ],
   },
   {
@@ -22,11 +22,11 @@ export default [
     rows: [
       {
         name: 'id',
-        type: 'String',
+        type: 'string',
         // so this can be meaningfully lexographically sorted
         default: () => `${+new Date()}${Math.random()}`,
       },
-      ['counterField', 'Int', { unique: true }],
+      ['counterField', 'number', { unique: true }],
     ],
   },
   {
@@ -35,11 +35,11 @@ export default [
     rows: [
       {
         name: 'id',
-        type: 'String',
+        type: 'string',
       },
       {
         name: 'optionalField',
-        type: 'String',
+        type: 'string',
         optional: true,
       },
     ],
@@ -48,11 +48,11 @@ export default [
     name: 'TableFour',
     primaryKey: 'id',
     rows: [
-      ['id', 'String'],
-      ['relation1Id', 'String', { optional: true }],
+      ['id', 'string'],
+      ['relation1Id', 'string', { optional: true }],
       {
         name: 'relation1',
-        type: 'String',
+        type: 'string',
         relation: {
           foreignField: 'id',
           localField: 'relation1Id',
@@ -65,11 +65,11 @@ export default [
     name: 'Relation1',
     primaryKey: 'id',
     rows: [
-      ['id', 'String'],
-      ['relation2Id', 'String'],
+      ['id', 'string'],
+      ['relation2Id', 'string'],
       {
         name: 'relation2',
-        type: 'String',
+        type: 'string',
         relation: {
           foreignField: 'id',
           localField: 'relation2Id',
@@ -81,44 +81,42 @@ export default [
   {
     name: 'Relation2',
     primaryKey: 'id',
-    rows: [['id', 'String']],
+    rows: [['id', 'string']],
   },
   {
     name: 'Table5',
     primaryKey: 'id',
     rows: [
-      ['id', 'Int'],
-      ['optionalField', 'Bool', { optional: true }],
+      ['id', 'number'],
+      ['optionalField', 'boolean', { optional: true }],
     ],
   },
   {
     name: 'Table6',
     primaryKey: 'id',
     rows: [
-      ['id', 'Int'],
-      ['boolField', 'Bool'],
-      ['stringField', 'String'],
-      ['objectField', 'Object'],
+      ['id', 'number'],
+      ['boolField', 'boolean'],
+      ['stringField', 'string'],
     ],
   },
   {
     name: 'Table7',
     primaryKey: 'id',
     rows: [
-      ['id', 'Int'],
-      ['boolField', 'Bool'],
-      ['stringField', 'String'],
-      ['objectField', 'Object'],
-      ['optionalField', 'String', { optional: true }],
+      ['id', 'number'],
+      ['boolField', 'boolean'],
+      ['stringField', 'string'],
+      ['bigintField', 'bigint'],
+      ['optionalField', 'string', { optional: true }],
     ],
   },
   {
     name: 'IndexTable',
     primaryKey: 'id',
-    indexes: [{ keys: ['id', 'id2'] }],
     rows: [
-      ['id', 'Int'],
-      ['id2', 'Int'],
+      ['id', 'number'],
+      ['id2', 'number'],
     ],
   },
 ] as TableData[]

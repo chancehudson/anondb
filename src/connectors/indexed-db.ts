@@ -58,7 +58,7 @@ export class IndexedDBConnector extends DB {
       async upgrade(db, _, __, tx) {
         for (const table of tables) {
           const tableSchema = schema[table.name] || ({} as any)
-          const indexes = (schema[table.name] || {}).indexes || []
+          const indexes = ((schema[table.name] || {}) as any).indexes || []
           for (const index of indexes) {
             const indexRows = index.keys.map(key =>
               tableSchema.rows.find(r => r.name === key),
@@ -208,7 +208,7 @@ export class IndexedDBConnector extends DB {
     const table = this.schema[collection]
     if (!table) throw new Error(`Invalid collection: "${collection}"`)
     // now let's look for an index to accelerate the query with
-    for (const index of table.indexes || []) {
+    for (const index of (table as any).indexes || []) {
       // make sure each required key is in the index, and all index keys are present
       let useIndex = true
       for (const key of keys) {
@@ -307,7 +307,7 @@ export class IndexedDBConnector extends DB {
       const key = Object.keys(options.orderBy || {})[0]
       // find an index to use for ordering by
       let indexName: string | undefined
-      for (const index of table.indexes || []) {
+      for (const index of (table as any).indexes || []) {
         if (index.keys.length === 1 && index.keys[0] === key) {
           indexName = index.name
           break

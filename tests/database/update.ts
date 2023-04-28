@@ -10,28 +10,21 @@ export default function(this: { db: DB }) {
         id: 0,
         boolField: true,
         stringField: 'test',
-        objectField: { test: 'obj' },
       },
       {
         id: 1,
         boolField: true,
         stringField: 'test',
-        objectField: { test: 'obj' },
       },
     ])
     {
       const row = await this.db.findOne(table, { where: { id: 0 } })
-      assert.equal(typeof row.objectField, 'object')
-      assert.equal(row.objectField.test, 'obj')
       assert.equal(row.boolField, true)
       assert.equal(row.stringField, 'test')
     }
     const changes = await this.db.update(table, {
       where: { id: [0, 1] },
       update: {
-        objectField: {
-          newProp: 'exists',
-        },
         boolField: false,
         stringField: 'newTest',
       },
@@ -40,8 +33,6 @@ export default function(this: { db: DB }) {
     assert.equal(typeof changes, 'number')
     {
       const row = await this.db.findOne(table, { where: { id: 0 } })
-      assert.equal(typeof row.objectField, 'object')
-      assert.equal(row.objectField.newProp, 'exists')
       assert.equal(row.boolField, false)
       assert.equal(row.stringField, 'newTest')
     }
@@ -54,22 +45,17 @@ export default function(this: { db: DB }) {
         id: 0,
         boolField: true,
         stringField: 'test',
-        objectField: { test: 'obj' },
       },
       {
         id: 1,
         boolField: true,
         stringField: 'test',
-        objectField: { test: 'obj' },
       },
     ])
     {
       const changes = await this.db.update(table, {
         where: { id: null },
         update: {
-          objectField: {
-            newProp: 'exists',
-          },
           boolField: false,
           stringField: 'newTest',
         },
@@ -80,9 +66,6 @@ export default function(this: { db: DB }) {
       const changes = await this.db.update(table, {
         where: { id: undefined},
         update: {
-          objectField: {
-            newProp: 'exists',
-          },
           boolField: false,
           stringField: 'newTest',
         },
@@ -91,15 +74,11 @@ export default function(this: { db: DB }) {
     }
     {
       const row = await this.db.findOne(table, { where: { id: 0 } })
-      assert.equal(typeof row.objectField, 'object')
-      assert.equal(row.objectField.newProp, 'exists')
       assert.equal(row.boolField, false)
       assert.equal(row.stringField, 'newTest')
     }
     {
       const row = await this.db.findOne(table, { where: { id: 1 } })
-      assert.equal(typeof row.objectField, 'object')
-      assert.equal(row.objectField.newProp, 'exists')
       assert.equal(row.boolField, false)
       assert.equal(row.stringField, 'newTest')
     }
@@ -129,14 +108,12 @@ export default function(this: { db: DB }) {
           id: 0,
           boolField: true,
           stringField: 'test',
-          objectField: { test: 'obj' },
         },
         update: {},
       })
       assert.equal(changes, 1)
       const doc = await this.db.findOne(table, { where: { id: 0 } })
       assert.equal(doc.stringField, 'test')
-      assert.equal(doc.objectField.test, 'obj')
     }
     {
       const changes = await this.db.upsert(table, {
@@ -145,7 +122,6 @@ export default function(this: { db: DB }) {
           id: 0,
           boolField: true,
           stringField: 'test',
-          objectField: { test: 'obj' },
         },
         update: {
           boolField: false,
@@ -168,7 +144,6 @@ export default function(this: { db: DB }) {
           id: 0,
           boolField: true,
           stringField: 'test',
-          objectField: { test: 'obj' },
         },
         update: {},
       })
@@ -185,7 +160,6 @@ export default function(this: { db: DB }) {
           id: 0,
           stringField: 'test2',
           boolField: false,
-          objectField: { test: 'obj2' },
         },
         update: {},
       })

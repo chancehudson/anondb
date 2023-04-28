@@ -37,7 +37,9 @@ export type UpsertOptions = {
   constraintKey?: string
 }
 
-export type DataType = 'Int' | 'Bool' | 'String' | 'Object'
+export type DataType = 'number' | 'boolean' | 'string' | 'bigint'
+export type _DataType = number | boolean | string | bigint
+export const validTypes = ['number', 'boolean', 'string', 'bigint']
 
 export type Relation = {
   localField: string
@@ -53,7 +55,7 @@ export type RowDef = {
   type: DataType
   // relational fields should be virtual
   relation?: Relation
-  default?: any | 'autoincrement'
+  default?: _DataType | (() => _DataType)
 }
 
 export type ShortRowDef = [
@@ -64,16 +66,8 @@ export type ShortRowDef = [
 
 export interface TableData {
   name: string
-  primaryKey: string | string[]
+  primaryKey: string
   rows: (RowDef | ShortRowDef)[]
-  indexes?: TableIndex[]
-}
-
-export interface TableIndex {
-  name: string
-  keys: string[] // can be an array of length 1
-  unique?: boolean
-  optional?: boolean
 }
 
 // For accepting a specific DB connector as an argument to a function
@@ -166,10 +160,6 @@ export function constructSchema(tables: TableData[]): Schema {
       rowsByName: {},
       ...table,
     }
-    const indexes = (table.indexes || []).map(index => ({
-      ...index,
-      name: index.name ? index.name : `${index.keys.join('-')}-index`,
-    }))
     for (const row of table.rows) {
       const fullRow = normalizeRowDef(row)
       schema[table.name].rowsByName[fullRow.name] = fullRow
@@ -180,23 +170,7 @@ export function constructSchema(tables: TableData[]): Schema {
           ...fullRow.relation,
         }
       }
-      if (
-        fullRow.type !== 'Bool' &&
-        (fullRow.optional ||
-          fullRow.unique ||
-          fullRow.index ||
-          [table.primaryKey].flat().indexOf(fullRow.name) !== -1)
-      ) {
-        // record it as an index, but don't index booleans
-        indexes.push({
-          name: `${fullRow.name}-auto-index`,
-          keys: [fullRow.name],
-          unique: fullRow.unique,
-          optional: fullRow.optional,
-        })
-      }
     }
-    schema[table.name].indexes = indexes
   }
   return schema
 }

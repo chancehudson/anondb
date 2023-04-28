@@ -1,4 +1,34 @@
-import { SchemaTable, Relation } from '../types'
+import { SchemaTable, Schema, Relation, validTypes } from '../types'
+
+export function checkSchema(schema: Schema) {
+  const tableNames = {} as any
+  for (const [key, val] of Object.entries(schema)) {
+    if (tableNames[key]) {
+      throw new Error(`Duplicate table name: "${key}"`)
+    }
+    tableNames[key] = true
+    const rowNames = {} as any
+    for (const row of val?.rows ?? []) {
+      // check unique row name
+      if (rowNames[row.name]) {
+        throw new Error(`Duplicate row in table "${key}": "${row.name}"`)
+      }
+      rowNames[row.name] = true
+      // check that type is valid
+      if (validTypes.indexOf(row.type) === -1) {
+        throw new Error(`Invalid type for row "${row.name}" in table "${key}": "${row.type}"`)
+      }
+      // check that default value is valid
+      if (typeof row.default === 'function') {
+        if (typeof row.default() !== row.type) {
+          throw new Error(`Default function for row "${row.name}" in table "${key}" returns wrong type`)
+        }
+      } else if (typeof row.default !== 'undefined' && typeof row.default !== row.type) {
+        throw new Error(`Default value for row "${row.name}" in table "${key}" does not match row type (got "${typeof row.default}" expected "${row.type}"`)
+      }
+    }
+  }
+}
 
 async function loadIncludedModels(
   models: any[],

@@ -12,7 +12,7 @@ import {
   TransactionDB
 } from '../types'
 import { validateDocuments, matchDocument } from '../helpers/memory'
-import { loadIncluded } from '../helpers/shared'
+import { loadIncluded, checkSchema } from '../helpers/shared'
 import { execAndCallback } from '../helpers/callbacks'
 
 export class MemoryConnector extends DB {
@@ -20,22 +20,44 @@ export class MemoryConnector extends DB {
   lock = new AsyncLock({ maxPending: 100000 })
 
   db = {
-    __uniques__: {}
+    __uniques__: {},
+    __indices__: {},
   }
 
   constructor(schema: Schema) {
     super()
     this.schema = schema
+    checkSchema(schema)
     for (const key of Object.keys(schema)) {
       this.db[key] = []
       for (const row of this.uniqueRows(key)) {
-        this.db.__uniques__[this.uniqueRowKey(key, row.name)] = {}
+        this.db.__uniques__[this.uniqueRowKey(key, row.name)] = new Set()
+      }
+      for (const row of this.indexedRows(key)) {
+        this.db.__indices__[this.indexRowKey(key, row.name)] = []
       }
     }
   }
 
   uniqueRowKey(collection: string, row: string) {
     return `unique-${collection}-${row}`
+  }
+
+  indexRowKey(collection: string, row: string) {
+    return `index-${collection}-${row}`
+  }
+
+  indexedRows(_collection: string) {
+    const collection = this.schema[_collection]
+    if (!collection) {
+      throw new Error(`Invalid collection: "${_collection}"`)
+    }
+    const rows = [] as any[]
+    for (const row of collection.rows) {
+      if (row.index || [collection.primaryKey].flat().indexOf(row.name) !== -1)
+        rows.push(row)
+    }
+    return rows
   }
 
   // check if a row is unique or a primary key
@@ -86,26 +108,28 @@ export class MemoryConnector extends DB {
     const newUniques = {}
     // now we've finalized the documents, compare uniqueness within the set
     for (const row of this.uniqueRows(_collection)) {
-      newUniques[this.uniqueRowKey(_collection, row.name)] = {}
+      newUniques[this.uniqueRowKey(_collection, row.name)] = new Set()
     }
     // make a copy to operate on
     for (const d of docs) {
       for (const row of this.uniqueRows(_collection)) {
         if (
-          newUniques[this.uniqueRowKey(_collection, row.name)][d[row.name]] ||
-          this.db.__uniques__[this.uniqueRowKey(_collection, row.name)][d[row.name]]
+          newUniques[this.uniqueRowKey(_collection, row.name)].has(d[row.name]) ||
+          this.db.__uniques__[this.uniqueRowKey(_collection, row.name)].has(d[row.name])
         ) {
           throw new Error(`Uniqueness constraint violation for row "${row.name}"`)
         }
-        newUniques[this.uniqueRowKey(_collection, row.name)][d[row.name]] = true
+        newUniques[this.uniqueRowKey(_collection, row.name)].add(d[row.name])
       }
     }
     // all checks pass, start mutating
     for (const d of docs) {
       this.db[_collection].push(d)
     }
-    for (const key of Object.keys(newUniques)) {
-      this.db.__uniques__[key] = { ...this.db.__uniques__[key], ...newUniques[key]}
+    for (const d of docs) {
+      for (const row of this.uniqueRows(_collection)) {
+        this.db.__uniques__[this.uniqueRowKey(_collection, row.name)].add(d[row.name])
+      }
     }
     if (docs.length === 1) {
       return docs[0]
@@ -183,9 +207,7 @@ export class MemoryConnector extends DB {
     // deep copy for the operation
     const newUniques = {}
     for (const row of this.uniqueRows(_collection)) {
-      newUniques[this.uniqueRowKey(_collection, row.name)] = {
-        ...this.db.__uniques__[this.uniqueRowKey(_collection, row.name)]
-      }
+      newUniques[this.uniqueRowKey(_collection, row.name)] = new Set(this.db.__uniques__[this.uniqueRowKey(_collection, row.name)])
     }
 
     for (const doc of this.db[_collection]) {
@@ -253,9 +275,7 @@ export class MemoryConnector extends DB {
     this.checkForInvalidRows(_collection, options.where)
     const newUniques = {}
     for (const row of this.uniqueRows(_collection)) {
-      newUniques[this.uniqueRowKey(_collection, row.name)] = {
-        ...this.db.__uniques__[this.uniqueRowKey(_collection, row.name)]
-      }
+      newUniques[this.uniqueRowKey(_collection, row.name)] = new Set(this.db.__uniques__[this.uniqueRowKey(_collection, row.name)])
     }
     const newDocs = [] as any[]
     for (const doc of this.db[_collection]) {
@@ -263,7 +283,7 @@ export class MemoryConnector extends DB {
         newDocs.push(doc)
       } else {
         for (const row of this.uniqueRows(_collection)) {
-          delete newUniques[this.uniqueRowKey(_collection, row.name)][doc[row.name]]
+          newUniques[this.uniqueRowKey(_collection, row.name)].delete(doc[row.name])
         }
       }
     }
@@ -295,12 +315,18 @@ export class MemoryConnector extends DB {
       start = rs
     })
     // deep copy the database for doing operations on
+    const clonedUniques = {}
+    for (const key of Object.keys(this.db.__uniques__)) {
+      clonedUniques[key] = new Set(this.db.__uniques__[key])
+    }
     const tempDB = {
-      __uniques__: { ...this.db.__uniques__ },
+      __uniques__: clonedUniques,
+      __indices__: { ...this.db.__indices__ },
       __mark__: 'test'
     }
     for (const key of Object.keys(this.db)) {
       if (key === '__uniques__') continue
+      if (key === '__indices__') continue
       tempDB[key] = []
       for (const doc of this.db[key]) {
         tempDB[key].push({ ...doc })

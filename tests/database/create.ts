@@ -54,132 +54,132 @@ export default function(this: { db: DB }) {
         id: 0,
         boolField: '0',
         stringField: 'test',
-        objectField: {},
+        bigintField: 1n,
       })
       assert(false)
     } catch (err) {
-      assert(/Unrecognized value .* for type Bool/.test(err.toString()))
+      assert(/Unrecognized value .* for type boolean/.test(err.toString()))
     }
     try {
       await this.db.create(table, {
         id: 0,
         boolField: 999,
         stringField: 'test',
-        objectField: {},
+        bigintField: 1n,
       })
       assert(false)
     } catch (err) {
-      assert(/Unrecognized value .* for type Bool/.test(err.toString()))
+      assert(/Unrecognized value .* for type boolean/.test(err.toString()))
     }
     try {
       await this.db.create(table, {
         id: 0,
         boolField: {},
         stringField: 'test',
-        objectField: {},
+        bigintField: 1n,
       })
       assert(false)
     } catch (err) {
-      assert(/Unrecognized value .* for type Bool/.test(err.toString()))
+      assert(/Unrecognized value .* for type boolean/.test(err.toString()))
     }
     try {
       await this.db.create(table, {
         id: true,
         boolField: true,
         stringField: 'test',
-        objectField: {},
+        bigintField: 1n,
       })
       assert(false)
     } catch (err) {
-      assert(/Unrecognized value .* for type Int/.test(err.toString()))
+      assert(/Unrecognized value .* for type number/.test(err.toString()))
     }
     try {
       await this.db.create(table, {
         id: {},
         boolField: true,
         stringField: 'test',
-        objectField: {},
+        bigintField: 1n,
       })
       assert(false)
     } catch (err) {
-      assert(/Unrecognized value .* for type Int/.test(err.toString()))
+      assert(/Unrecognized value .* for type number/.test(err.toString()))
     }
     try {
       await this.db.create(table, {
         id: 'test',
         boolField: true,
         stringField: 'test',
-        objectField: {},
+        bigintField: 1n,
       })
       assert(false)
     } catch (err) {
-      assert(/Unrecognized value .* for type Int/.test(err.toString()))
+      assert(/Unrecognized value .* for type number/.test(err.toString()))
     }
     try {
       await this.db.create(table, {
         id: 0,
         boolField: true,
         stringField: 0,
-        objectField: {},
+        bigintField: 1n,
       })
       assert(false)
     } catch (err) {
-      assert(/Unrecognized value .* for type String/.test(err.toString()))
+      assert(/Unrecognized value .* for type string/.test(err.toString()))
     }
     try {
       await this.db.create(table, {
         id: 0,
         boolField: true,
         stringField: {},
-        objectField: {},
+        bigintField: 1n,
       })
       assert(false)
     } catch (err) {
-      assert(/Unrecognized value .* for type String/.test(err.toString()))
+      assert(/Unrecognized value .* for type string/.test(err.toString()))
     }
     try {
       await this.db.create(table, {
         id: 0,
         boolField: true,
         stringField: true,
-        objectField: {},
+        bigintField: 1n,
       })
       assert(false)
     } catch (err) {
-      assert(/Unrecognized value .* for type String/.test(err.toString()))
+      assert(/Unrecognized value .* for type string/.test(err.toString()))
     }
     try {
       await this.db.create(table, {
         id: 0,
         boolField: true,
         stringField: 'test',
-        objectField: 'test',
+        bigintField: 1,
       })
       assert(false)
     } catch (err) {
-      assert(/Unrecognized value .* for type Object/.test(err.toString()))
+      assert(/Unrecognized value .* for type bigint/.test(err.toString()))
     }
     try {
       await this.db.create(table, {
         id: 0,
         boolField: true,
         stringField: 'test',
-        objectField: true,
+        bigintField: 't',
       })
       assert(false)
     } catch (err) {
-      assert(/Unrecognized value .* for type Object/.test(err.toString()))
+      assert(/Unrecognized value .* for type bigint/.test(err.toString()))
     }
     try {
       await this.db.create(table, {
         id: 0,
         boolField: true,
         stringField: 'test',
-        objectField: 0,
+        bigintField: false,
       })
       assert(false)
     } catch (err) {
-      assert(/Unrecognized value .* for type Object/.test(err.toString()))
+      assert(/Unrecognized value .* for type bigint/.test(err.toString()))
     }
   })
 }

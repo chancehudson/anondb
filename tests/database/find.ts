@@ -274,21 +274,6 @@ export default function(this: { db: DB }) {
     }
   })
 
-  test('should handle object type', async () => {
-    const table = 'Table6'
-    await this.db.create(table, [
-      {
-        id: 0,
-        boolField: true,
-        stringField: 'test',
-        objectField: { test: 'obj' },
-      },
-    ])
-    const row = await this.db.findOne(table, { where: { id: 0 } })
-    assert.equal(typeof row.objectField, 'object')
-    assert.equal(row.objectField.test, 'obj')
-  })
-
   test('should use operators', async () => {
     const table = 'TableTwo'
     for (let x = 0; x < 10; x++) {

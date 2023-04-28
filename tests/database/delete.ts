@@ -9,13 +9,13 @@ export default function(this: { db: DB }) {
       id: 0,
       boolField: true,
       stringField: 'test',
-      objectField: {},
+      bigintField: 1n,
     })
     await this.db.create(table, {
       id: 1,
       boolField: true,
       stringField: 'test',
-      objectField: {},
+      bigintField: 1n,
     })
     const deleted = await this.db.delete(table, {
       where: {
@@ -34,13 +34,13 @@ export default function(this: { db: DB }) {
       id: 0,
       boolField: true,
       stringField: 'test',
-      objectField: {},
+      bigintField: 1n,
     })
     await this.db.create(table, {
       id: 1,
       boolField: true,
       stringField: 'test',
-      objectField: {},
+      bigintField: 1n,
     })
     {
       const deleted = await this.db.delete(table, {
@@ -70,13 +70,13 @@ export default function(this: { db: DB }) {
       id: 0,
       boolField: true,
       stringField: 'test',
-      objectField: {},
+      bigintField: 1n,
     })
     await this.db.create(table, {
       id: 1,
       boolField: true,
       stringField: 'test',
-      objectField: {},
+      bigintField: 1n,
     })
     {
       const deleted = await this.db.delete(table, {
@@ -102,13 +102,13 @@ export default function(this: { db: DB }) {
       id: 0,
       boolField: true,
       stringField: 'test',
-      objectField: {},
+      bigintField: 1n,
     })
     await this.db.create(table, {
       id: 1,
       boolField: true,
       stringField: 'test',
-      objectField: {},
+      bigintField: 1n,
     })
     {
       const deleted = await this.db.delete(table, {

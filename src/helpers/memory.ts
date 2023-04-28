@@ -31,29 +31,12 @@ export function validateDocuments(table: SchemaTable, _docs: any | any[]) {
       }
       if (
         typeof wipDoc[row.name] !== 'undefined' &&
-        wipDoc[row.name] !== null
+        wipDoc[row.name] !== null &&
+        typeof wipDoc[row.name] !== row.type
       ) {
-        if (row.type === 'Bool' && typeof wipDoc[row.name] !== 'boolean') {
-          throw new Error(
-            `Unrecognized value ${wipDoc[row.name]} for type Bool`,
-          )
-        } else if (row.type === 'Int' && typeof wipDoc[row.name] !== 'number') {
-          throw new Error(`Unrecognized value ${wipDoc[row.name]} for type Int`)
-        } else if (
-          row.type === 'String' &&
-          typeof wipDoc[row.name] !== 'string'
-        ) {
-          throw new Error(
-            `Unrecognized value ${wipDoc[row.name]} for type String`,
-          )
-        } else if (
-          row.type === 'Object' &&
-          typeof wipDoc[row.name] !== 'object'
-        ) {
-          throw new Error(
-            `Unrecognized value ${wipDoc[row.name]} for type Object`,
-          )
-        }
+        throw new Error(
+          `Unrecognized value "${wipDoc[row.name]}" for type ${row.type} in table "${table.name}", row "${row.name}"`,
+        )
       }
     }
     return {
