@@ -517,4 +517,44 @@ export default function(this: { db: DB }) {
       assert(!!docs[0].optionalField, 'ne incorect')
     }
   })
+
+  test('should find bigint field', async () => {
+    const table = 'bigint'
+    for (let x = 0; x < 100; x++) {
+      await this.db.create(table, {
+        id: 2n**BigInt(x)
+      })
+    }
+
+    const doc = await this.db.findOne(table, {
+      where: {
+        id: 128n
+      }
+    })
+    assert.equal(doc.id, 128n)
+  })
+
+  test('should sort bigint field', async () => {
+    const table = 'bigint'
+    for (let x = 0; x < 100; x++) {
+      await this.db.create(table, {
+        id: 2n**BigInt(x)
+      })
+    }
+
+    for (let x = 99; x >= 0; x--) {
+      const count = await this.db.count(table, {
+        id: {
+          gte: 2n**BigInt(x)
+        }
+      })
+      assert.equal(count, 100-x)
+    }
+    const count = await this.db.count(table, {
+      id: {
+        lt: 128n
+      }
+    })
+    assert.equal(count, 7)
+  })
 }

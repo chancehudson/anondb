@@ -112,6 +112,12 @@ export default [
     ],
   },
   {
+    name: 'bigint',
+    rows: [
+      ['id', 'bigint']
+    ]
+  },
+  {
     name: 'IndexTable',
     primaryKey: 'id',
     rows: [

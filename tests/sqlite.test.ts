@@ -43,15 +43,15 @@ describe('sqlite tests', function(this: { db: DB }) {
           rows: [
             {
               name: 'id',
-              type: 'String',
+              type: 'string',
               default: () => Math.floor(Math.random() * 1000000).toString(),
             },
-            ['uniqueField', 'String', { unique: true }],
-            ['uniqueAndOptionalField', 'String', { unique: true, optional: true }],
-            ['optionalField', 'String', { optional: true }],
-            ['regularField', 'String'],
-            ['f1', 'Bool'],
-            ['f2', 'Int'],
+            ['uniqueField', 'string', { unique: true }],
+            ['uniqueAndOptionalField', 'string', { unique: true, optional: true }],
+            ['optionalField', 'string', { optional: true }],
+            ['regularField', 'string'],
+            ['f1', 'boolean'],
+            ['f2', 'number'],
           ],
         },
       ] as TableData[]
@@ -72,17 +72,17 @@ describe('sqlite tests', function(this: { db: DB }) {
           rows: [
             {
               name: 'id',
-              type: 'String',
+              type: 'string',
               default: () => Math.floor(Math.random() * 1000000).toString(),
             },
-            ['uniqueField', 'String', { unique: true }],
-            ['uniqueAndOptionalField', 'String', { unique: true, optional: true }],
-            ['optionalField', 'String', { optional: true }],
-            ['f1', 'Bool'],
-            ['f2', 'Int'],
+            ['uniqueField', 'string', { unique: true }],
+            ['uniqueAndOptionalField', 'string', { unique: true, optional: true }],
+            ['optionalField', 'string', { optional: true }],
+            ['f1', 'boolean'],
+            ['f2', 'number'],
             {
               name: 'newField',
-              type: 'String',
+              type: 'string',
               default: () => 'newval'
             }
           ],
@@ -110,13 +110,13 @@ describe('sqlite tests', function(this: { db: DB }) {
           rows: [
             {
               name: 'id',
-              type: 'String',
+              type: 'string',
               default: () => Math.floor(Math.random() * 1000000).toString(),
             },
-            ['uniqueField', 'String', { unique: true }],
-            ['uniqueAndOptionalField', 'String', { unique: true, optional: true }],
-            ['optionalField', 'String', { optional: true }],
-            ['regularField', 'String'],
+            ['uniqueField', 'string', { unique: true }],
+            ['uniqueAndOptionalField', 'string', { unique: true, optional: true }],
+            ['optionalField', 'string', { optional: true }],
+            ['regularField', 'string'],
           ],
         },
       ] as TableData[]
@@ -135,15 +135,15 @@ describe('sqlite tests', function(this: { db: DB }) {
           rows: [
             {
               name: 'id',
-              type: 'String',
+              type: 'string',
               default: () => Math.floor(Math.random() * 1000000).toString(),
             },
-            ['uniqueField', 'String', { unique: true }],
-            ['uniqueAndOptionalField', 'String', { unique: true, optional: true }],
-            ['optionalField', 'String', { optional: true }],
+            ['uniqueField', 'string', { unique: true }],
+            ['uniqueAndOptionalField', 'string', { unique: true, optional: true }],
+            ['optionalField', 'string', { optional: true }],
             {
               name: 'newField',
-              type: 'String',
+              type: 'string',
             }
           ],
         },

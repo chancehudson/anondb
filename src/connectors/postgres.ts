@@ -14,15 +14,7 @@ import {
   TableData,
   TransactionDB,
 } from '../types'
-import {
-  tableCreationSql,
-  findManySql,
-  createSql,
-  deleteManySql,
-  updateSql,
-  countSql,
-  upsertSql,
-} from '../helpers/sql'
+import { SQLEncoder } from '../helpers/sql'
 import { loadIncluded } from '../helpers/shared'
 import { execAndCallback } from '../helpers/callbacks'
 
@@ -35,10 +27,13 @@ export class PostgresConnector extends DB {
 
   lock = new AsyncLock({ maxPending: 100000 })
 
+  sqlEncoder: SQLEncoder
+
   constructor(config: any | string) {
     super()
     this.config = config
     this.db = {} as any
+    this.sqlEncoder = new SQLEncoder('postgres')
   }
 
   async init() {
@@ -73,7 +68,7 @@ export class PostgresConnector extends DB {
     if (!table) throw new Error(`Unable to find table ${collection} in schema`)
     const docs = [_doc].flat()
     if (docs.length === 0) return []
-    const { sql, query } = createSql(table, docs)
+    const { sql, query } = this.sqlEncoder.createSql(table, docs)
     await this.db.query(sql)
     if (Array.isArray(_doc)) {
       return this._findMany(collection, {
@@ -114,25 +109,8 @@ export class PostgresConnector extends DB {
   private async _findMany(collection: string, options: FindManyOptions) {
     const table = this.schema[collection]
     if (!table) throw new Error(`Unable to find table ${collection}`)
-    const sql = findManySql(table, options)
+    const sql = this.sqlEncoder.findManySql(table, options)
     const { rows } = await this.db.query(sql)
-    const objectKeys = Object.keys(table.rowsByName).filter(key => {
-      return table.rowsByName[key]?.type === 'Object'
-    })
-    if (objectKeys.length > 0) {
-      // need to expand json objects
-      // nested yuck!
-      // TODO handle json parse errors
-      for (const model of rows) {
-        for (const key of objectKeys) {
-          // eslint-disable-next-line no-continue
-          if (typeof model[key] !== 'string') continue
-          Object.assign(model, {
-            [key]: JSON.parse(model[key]),
-          })
-        }
-      }
-    }
     const { include } = options
     await loadIncluded(collection, {
       models: rows,
@@ -140,7 +118,7 @@ export class PostgresConnector extends DB {
       findMany: this._findMany.bind(this),
       table,
     })
-    return rows
+    return rows.map(d => this.sqlEncoder.parseDoc(table, d))
   }
 
   async count(collection: string, where: WhereClause) {
@@ -153,7 +131,7 @@ export class PostgresConnector extends DB {
   private async _count(collection: string, where: WhereClause) {
     const table = this.schema[collection]
     if (!table) throw new Error(`Unable to find table ${collection}`)
-    const sql = countSql(table, where)
+    const sql = this.sqlEncoder.countSql(table, where)
     const { rows } = await this.db.query(sql)
     return +rows[0].count
   }
@@ -172,7 +150,7 @@ export class PostgresConnector extends DB {
     if (Object.keys(update).length === 0) return this._count(collection, where)
     const table = this.schema[collection]
     if (!table) throw new Error(`Unable to find table ${collection} in schema`)
-    const sql = updateSql(table, options)
+    const sql = this.sqlEncoder.updateSql(table, options)
     const { rowCount } = await this.db.query(sql)
     return rowCount
   }
@@ -189,7 +167,7 @@ export class PostgresConnector extends DB {
   private async _upsert(collection: string, options: UpsertOptions) {
     const table = this.schema[collection]
     if (!table) throw new Error(`Unable to find table ${collection} in schema`)
-    const sql = upsertSql(table, options)
+    const sql = this.sqlEncoder.upsertSql(table, options)
     const { rowCount } = await this.db.query(sql)
     return rowCount
   }
@@ -206,14 +184,14 @@ export class PostgresConnector extends DB {
   private async _deleteMany(collection: string, options: DeleteManyOptions) {
     const table = this.schema[collection]
     if (!table) throw new Error(`Unable to find table "${collection}"`)
-    const sql = deleteManySql(table, options)
+    const sql = this.sqlEncoder.deleteManySql(table, options)
     const result = await this.db.query(sql)
     return result.rowCount || 0
   }
 
   async createTables(tableData: TableData[]) {
     this.schema = constructSchema(tableData)
-    const createTablesCommand = tableCreationSql(tableData)
+    const createTablesCommand = this.sqlEncoder.tableCreationSql(tableData, true)
     await this.db.query(createTablesCommand)
   }
 
@@ -243,7 +221,7 @@ export class PostgresConnector extends DB {
           throw new Error(`Unable to find table ${collection} in schema`)
         const docs = [_doc].flat()
         if (docs.length === 0) return
-        const { sql } = createSql(table, docs)
+        const { sql } = this.sqlEncoder.createSql(table, docs)
         sqlOperations.push(sql)
       },
       update: (collection: string, options: UpdateOptions) => {
@@ -251,18 +229,18 @@ export class PostgresConnector extends DB {
         if (!table)
           throw new Error(`Unable to find table ${collection} in schema`)
         if (Object.keys(options.update).length === 0) return
-        sqlOperations.push(updateSql(table, options))
+        sqlOperations.push(this.sqlEncoder.updateSql(table, options))
       },
       delete: (collection: string, options: DeleteManyOptions) => {
         const table = this.schema[collection]
         if (!table) throw new Error(`Unable to find table "${collection}"`)
-        const sql = deleteManySql(table, options)
+        const sql = this.sqlEncoder.deleteManySql(table, options)
         sqlOperations.push(sql)
       },
       upsert: (collection: string, options: UpsertOptions) => {
         const table = this.schema[collection]
         if (!table) throw new Error(`Unable to find table "${collection}"`)
-        const sql = upsertSql(table, options)
+        const sql = this.sqlEncoder.upsertSql(table, options)
         sqlOperations.push(sql)
       },
       onCommit: (cb: Function) => {

@@ -15,15 +15,7 @@ import {
   Schema,
   TransactionDB,
 } from '../types'
-import {
-  tableCreationSql,
-  createSql,
-  findManySql,
-  countSql,
-  updateSql,
-  deleteManySql,
-  upsertSql,
-} from '../helpers/sql'
+import { SQLEncoder } from '../helpers/sql'
 import { loadIncluded } from '../helpers/shared'
 import { execAndCallback } from '../helpers/callbacks'
 
@@ -34,9 +26,12 @@ export class SQLiteMemoryConnector extends DB {
 
   lock = new AsyncLock({ maxPending: 100000 })
 
+  sqlEncoder: SQLEncoder
+
   constructor() {
     super()
     this.db = {} as any
+    this.sqlEncoder = new SQLEncoder('sqlite')
   }
 
   async init() {
@@ -67,7 +62,7 @@ export class SQLiteMemoryConnector extends DB {
     if (!table) throw new Error(`Unable to find table ${collection} in schema`)
     const docs = [_doc].flat()
     if (docs.length === 0) return []
-    const { sql, query } = createSql(table, docs)
+    const { sql, query } = this.sqlEncoder.createSql(table, docs)
     await this.db.exec(sql)
     if (Array.isArray(_doc)) {
       return this._findMany(collection, {
@@ -108,7 +103,7 @@ export class SQLiteMemoryConnector extends DB {
   async _findMany(collection: string, options: FindManyOptions) {
     const table = this.schema[collection]
     if (!table) throw new Error(`Unable to find table ${collection}`)
-    const sql = findManySql(table, options)
+    const sql = this.sqlEncoder.findManySql(table, options)
     const result = await this.db.exec(sql)
     if (result.length === 0) return []
     const [{ columns, values }] = result
@@ -120,23 +115,6 @@ export class SQLiteMemoryConnector extends DB {
       }
       models.push(obj)
     }
-    const objectKeys = Object.keys(table.rowsByName).filter(key => {
-      return table.rowsByName[key]?.type === 'Object'
-    })
-    if (objectKeys.length > 0) {
-      // need to expand json objects
-      // nested yuck!
-      // TODO handle json parse errors
-      for (const model of models) {
-        for (const key of objectKeys) {
-          // eslint-disable-next-line no-continue
-          if (typeof model[key] !== 'string') continue
-          Object.assign(model, {
-            [key]: JSON.parse(model[key]),
-          })
-        }
-      }
-    }
     const { include } = options
     await loadIncluded(collection, {
       models,
@@ -144,7 +122,7 @@ export class SQLiteMemoryConnector extends DB {
       findMany: this._findMany.bind(this),
       table,
     })
-    return models
+    return models.map(d => this.sqlEncoder.parseDoc(table, d))
   }
 
   async count(collection: string, where: WhereClause) {
@@ -157,7 +135,7 @@ export class SQLiteMemoryConnector extends DB {
   async _count(collection: string, where: WhereClause) {
     const table = this.schema[collection]
     if (!table) throw new Error(`Unable to find table ${collection}`)
-    const sql = countSql(table, where)
+    const sql = this.sqlEncoder.countSql(table, where)
     const result = await this.db.exec(sql)
     return result[0].values[0][0]
   }
@@ -176,7 +154,7 @@ export class SQLiteMemoryConnector extends DB {
     if (Object.keys(update).length === 0) return this._count(collection, where)
     const table = this.schema[collection]
     if (!table) throw new Error(`Unable to find table ${collection} in schema`)
-    const sql = updateSql(table, options)
+    const sql = this.sqlEncoder.updateSql(table, options)
     await this.db.exec(sql)
     return this.db.getRowsModified()
   }
@@ -193,7 +171,7 @@ export class SQLiteMemoryConnector extends DB {
   async _upsert(collection: string, options: UpsertOptions) {
     const table = this.schema[collection]
     if (!table) throw new Error(`Unable to find table ${collection} in schema`)
-    const sql = upsertSql(table, options)
+    const sql = this.sqlEncoder.upsertSql(table, options)
     await this.db.run(sql)
     return this.db.getRowsModified()
   }
@@ -210,7 +188,7 @@ export class SQLiteMemoryConnector extends DB {
   private async _deleteMany(collection: string, options: DeleteManyOptions) {
     const table = this.schema[collection]
     if (!table) throw new Error(`Unable to find table "${collection}"`)
-    const sql = deleteManySql(table, options)
+    const sql = this.sqlEncoder.deleteManySql(table, options)
     await this.db.run(sql)
     return this.db.getRowsModified()
   }
@@ -242,7 +220,7 @@ export class SQLiteMemoryConnector extends DB {
           throw new Error(`Unable to find table ${collection} in schema`)
         const docs = [_doc].flat()
         if (docs.length === 0) return
-        const { sql } = createSql(table, docs)
+        const { sql } = this.sqlEncoder.createSql(table, docs)
         sqlOperations.push(sql)
       },
       update: (collection: string, options: UpdateOptions) => {
@@ -250,18 +228,18 @@ export class SQLiteMemoryConnector extends DB {
         if (!table)
           throw new Error(`Unable to find table ${collection} in schema`)
         if (Object.keys(options.update).length === 0) return
-        sqlOperations.push(updateSql(table, options))
+        sqlOperations.push(this.sqlEncoder.updateSql(table, options))
       },
       delete: (collection: string, options: DeleteManyOptions) => {
         const table = this.schema[collection]
         if (!table) throw new Error(`Unable to find table "${collection}"`)
-        const sql = deleteManySql(table, options)
+        const sql = this.sqlEncoder.deleteManySql(table, options)
         sqlOperations.push(sql)
       },
       upsert: (collection: string, options: UpsertOptions) => {
         const table = this.schema[collection]
         if (!table) throw new Error(`Unable to find table "${collection}"`)
-        const sql = upsertSql(table, options)
+        const sql = this.sqlEncoder.upsertSql(table, options)
         sqlOperations.push(sql)
       },
       onCommit: (cb: Function) => {
@@ -317,7 +295,7 @@ export class SQLiteMemoryConnector extends DB {
 
   async createTables(tableData: TableData[]) {
     this.schema = constructSchema(tableData)
-    const createTablesCommand = tableCreationSql(tableData)
+    const createTablesCommand = this.sqlEncoder.tableCreationSql(tableData)
     await this.db.exec(createTablesCommand)
   }
 }

@@ -149,6 +149,7 @@ export default function(this: { db: DB }) {
       assert(/Unrecognized value .* for type string/.test(err.toString()))
     }
     try {
+      console.log('-----------')
       await this.db.create(table, {
         id: 0,
         boolField: true,
@@ -157,6 +158,7 @@ export default function(this: { db: DB }) {
       })
       assert(false)
     } catch (err) {
+      console.log(err.toString())
       assert(/Unrecognized value .* for type bigint/.test(err.toString()))
     }
     try {
