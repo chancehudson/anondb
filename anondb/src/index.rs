@@ -1,10 +1,5 @@
 use std::marker::PhantomData;
 
-/// Allow a type to be serialized to lexicographically comparable bytes
-pub trait SerializeLexicographic {
-    fn serialize_lex(&self) -> Vec<u8>;
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct Index<T> {
     pub name: String,
@@ -33,17 +28,10 @@ pub struct IndexOptions {
 
 #[macro_export]
 macro_rules! primary_key {
-    ($struct_name:ty, $($field:ident),+) => {
-        |doc: &$struct_name| -> Vec<u8> {
-            let mut bytes = Vec::default();
-            $(
-                // This line enforces the trait bound at compile time.
-                // If $field doesn't implement SerializeLexicographic,
-                // this won't compile
-                bytes.extend(<_ as crate::SerializeLexicographic>::serialize_lex(&doc.$field));
-            )+
-            bytes
-        }
+    ($struct_name:ty, $field:ident) => {
+        (stringify!($field).into(), |doc: &$struct_name| -> Vec<u8> {
+            <_ as ::anondb_kv::SerializeLexicographic>::serialize_lex(&doc.$field)
+        })
     };
 }
 
@@ -63,7 +51,7 @@ macro_rules! index {
                     // This line enforces the trait bound at compile time.
                     // If $field doesn't implement SerializeLexicographic,
                     // this won't compile
-                    bytes.extend(<_ as crate::SerializeLexicographic>::serialize_lex(&doc.$field));
+                    bytes.extend(<_ as ::anondb_kv::SerializeLexicographic>::serialize_lex(&doc.$field));
                 )+
                 bytes
             },
@@ -71,43 +59,4 @@ macro_rules! index {
             _phantom: std::marker::PhantomData::default()
         }
     }};
-}
-
-impl<T: SerializeLexicographic> SerializeLexicographic for Option<T> {
-    fn serialize_lex(&self) -> Vec<u8> {
-        match self {
-            Some(v) => SerializeLexicographic::serialize_lex(v),
-            None => vec![0x00],
-        }
-    }
-}
-
-impl SerializeLexicographic for u8 {
-    fn serialize_lex(&self) -> Vec<u8> {
-        self.to_be_bytes().to_vec()
-    }
-}
-
-impl SerializeLexicographic for u16 {
-    fn serialize_lex(&self) -> Vec<u8> {
-        self.to_be_bytes().to_vec()
-    }
-}
-
-impl SerializeLexicographic for u32 {
-    fn serialize_lex(&self) -> Vec<u8> {
-        self.to_be_bytes().to_vec()
-    }
-}
-
-impl SerializeLexicographic for u64 {
-    fn serialize_lex(&self) -> Vec<u8> {
-        self.to_be_bytes().to_vec()
-    }
-}
-
-impl SerializeLexicographic for u128 {
-    fn serialize_lex(&self) -> Vec<u8> {
-        self.to_be_bytes().to_vec()
-    }
 }

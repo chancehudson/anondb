@@ -4,7 +4,6 @@ use std::sync::RwLock;
 
 use anyhow::Result;
 
-use byteorder::NetworkEndian;
 use redb::*;
 
 use super::*;
@@ -69,6 +68,22 @@ impl Transaction for RedbTransaction {
 }
 
 impl Operations for RedbTransaction {
+    fn get_multimap(&self, table: &str, key: &[u8]) -> Result<impl Iterator<Item = &[u8]>> {
+        Ok(vec![panic!()].into_iter())
+    }
+
+    fn insert_multimap(&self, table: &str, key: &[u8], value: &[u8]) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn remove_multimap(&self, table: &str, key: &[u8], value: &[u8]) -> Result<bool> {
+        unimplemented!()
+    }
+
+    fn remove_all_multimap(&self, table: &str, key: &[u8]) -> Result<()> {
+        unimplemented!()
+    }
+
     fn get(&self, table: &str, key: &[u8]) -> Result<Option<Vec<u8>>> {
         match self {
             RedbTransaction::Read(_, _) => Ok(self
@@ -129,11 +144,11 @@ impl Operations for RedbTransaction {
     }
 }
 
-pub struct RedbDB {
+pub struct RedbKV {
     db: Database,
 }
 
-impl RedbDB {
+impl RedbKV {
     fn read(&self) -> Result<ReadTransaction> {
         Ok(self.db.begin_read()?)
     }
@@ -143,7 +158,7 @@ impl RedbDB {
     }
 }
 
-impl KV for RedbDB {
+impl KV for RedbKV {
     fn at_path(path: &std::path::Path) -> Result<Self> {
         unimplemented!()
     }
@@ -195,7 +210,23 @@ impl KV for RedbDB {
 }
 
 /// Operations occuring outside of a transaction. "One and done" operations.
-impl Operations for RedbDB {
+impl Operations for RedbKV {
+    fn get_multimap(&self, table: &str, key: &[u8]) -> Result<impl Iterator<Item = &[u8]>> {
+        Ok(vec![panic!()].into_iter())
+    }
+
+    fn insert_multimap(&self, table: &str, key: &[u8], value: &[u8]) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn remove_multimap(&self, table: &str, key: &[u8], value: &[u8]) -> Result<bool> {
+        unimplemented!()
+    }
+
+    fn remove_all_multimap(&self, table: &str, key: &[u8]) -> Result<()> {
+        unimplemented!()
+    }
+
     /// Insert a key for a table and return the old value if it exists. Must be `O(1)`.
     fn insert(&self, table: &str, key: &[u8], value: &[u8]) -> Result<Option<Vec<u8>>> {
         let tx = self.db.begin_write()?;
