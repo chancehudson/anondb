@@ -23,22 +23,6 @@ where
     primary_key: Option<(String, fn(&T) -> Vec<u8>)>,
 }
 
-impl<T, K: KV> Default for Collection<T, K>
-where
-    T: 'static + Serialize + for<'de> Deserialize<'de>,
-{
-    fn default() -> Self {
-        Self {
-            // these none values will be assigned in the anondb_macros::AnonDB derive macro
-            kv: None,
-            name: None,
-            primary_key: None,
-            named_indices: None,
-            indices: Vec::default(),
-        }
-    }
-}
-
 impl<T, K: KV> Collection<T, K>
 where
     T: 'static + Serialize + for<'de> Deserialize<'de>,
@@ -275,5 +259,21 @@ where
             return Ok(true);
         })?;
         Ok(())
+    }
+}
+
+impl<T, K: KV> Default for Collection<T, K>
+where
+    T: 'static + Serialize + for<'de> Deserialize<'de>,
+{
+    fn default() -> Self {
+        Self {
+            // these none values will be assigned in the anondb_macros::AnonDB derive macro
+            kv: None,
+            name: None,
+            primary_key: None,
+            named_indices: None,
+            indices: Vec::default(),
+        }
     }
 }

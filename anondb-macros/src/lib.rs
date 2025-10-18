@@ -250,22 +250,39 @@ pub fn anondb_collections(input: TokenStream) -> TokenStream {
         }
     });
 
+    let defaults = fields.iter().map(|f| {
+        let field_name = &f.ident;
+        quote! {
+            #field_name: Collection::default(),
+        }
+    });
+
     let expanded = quote! {
+        impl #impl_generics Default for #name #ty_generics #where_clause {
+            fn default() -> Self {
+                Self {
+                    #(#defaults)*
+                }
+            }
+        }
+
         impl #impl_generics #name #ty_generics #where_clause {
             /// Initialize the database backed by a kv that exists in memory.
-            pub fn in_memory(mut self, bytes_maybe: Option<&[u8]>) -> ::anyhow::Result<::std::sync::Arc<Self>> {
+            pub fn in_memory(bytes_maybe: Option<&[u8]>) -> ::anyhow::Result<::std::sync::Arc<Self>> {
+                let mut s = Self::default();
                 let kv = ::std::sync::Arc::new(#kv_generic_name::in_memory(bytes_maybe)?);
-                self.setup(kv)?;
-                self.check_consistency()?;
-                Ok(::std::sync::Arc::new(self))
+                s.setup(kv)?;
+                s.check_consistency()?;
+                Ok(::std::sync::Arc::new(s))
             }
 
             /// Initialize the database backed by a kv that exists on disk.
-            pub fn at_path(mut self, path: &::std::path::Path) -> ::anyhow::Result<::std::sync::Arc<Self>> {
+            pub fn at_path(path: &::std::path::Path) -> ::anyhow::Result<::std::sync::Arc<Self>> {
+                let mut s = Self::default();
                 let kv = ::std::sync::Arc::new(#kv_generic_name::at_path(path)?);
-                self.setup(kv)?;
-                self.check_consistency()?;
-                Ok(::std::sync::Arc::new(self))
+                s.setup(kv)?;
+                s.check_consistency()?;
+                Ok(::std::sync::Arc::new(s))
             }
 
             /// Assign collection variables based on struct values.
